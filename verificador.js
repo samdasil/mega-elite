@@ -87,6 +87,7 @@ function executar() {
     }
     dezenasSorteadas = input.value.trim().split(',').map(Number);; 
     resultadoFinal = conferirJogos(meusJogos, dezenasSorteadas);
+    title.textContent = `Resultado dos números informados`;
     renderizarJogos(resultadoFinal);
     console.log("🎯 Resultado do Sorteio:", dezenasSorteadas);
     console.table(resultadoFinal);
