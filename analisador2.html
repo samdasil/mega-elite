@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador Pro - Filtros Interativos</title>
+    <script src="script.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --info: #3498db;
+            --warning: #f1c40f;
+            --bg: #f4f7f6;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        h1 { text-align: center; color: var(--primary); margin-bottom: 30px; }
+
+        /* Dashboard */
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .card-resumo { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-resumo h3 { margin: 0 0 10px 0; font-size: 0.9rem; color: #7f8c8d; text-transform: uppercase; }
+        .stat-row { margin-bottom: 8px; }
+        .stat-info { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px; }
+        .bar-bg { background: #eee; height: 6px; border-radius: 3px; }
+        .bar-fill { height: 100%; background: var(--success); border-radius: 3px; transition: width 0.4s; }
+        .bar-fill.success { height: 100%; background: var(--success); border-radius: 3px; transition: width 0.4s; }
+        .bar-fill.danger { height: 100%; background: var(--danger); border-radius: 3px; transition: width 0.4s; }
+
+        /* Barra de Filtros Interativos */
+        .filter-bar { 
+            background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .filter-group { display: flex; gap: 5px; align-items: center; border-right: 1px solid #eee; padding-right: 10px; }
+        .filter-group:last-child { border: none; }
+        .filter-label { font-size: 0.8rem; font-weight: bold; color: var(--primary); }
+
+        button { 
+            padding: 6px 12px; border: 1px solid #ddd; background: white; cursor: pointer; 
+            border-radius: 4px; font-size: 0.75rem; transition: 0.2s;
+        }
+        button:hover { background: #f8f9fa; border-color: var(--info); }
+        button.active { background: var(--info); color: white; border-color: var(--info); }
+        button.btn-elite.active { background: var(--success); border-color: var(--success); }
+        button.btn-reset { background: var(--danger); color: white; border-color: var(--danger); margin-left: auto; }
+
+        /* Tabela */
+        .table-container { background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        thead { background: var(--primary); color: white; }
+        th, td { padding: 12px; text-align: center; font-size: 0.85rem; border-bottom: 1px solid #eee; }
+        .bola-mini { display: inline-block; width: 22px; height: 22px; line-height: 22px; background: #eee; border-radius: 4px; margin: 0 2px; font-weight: bold; font-size: 0.7rem; }
+        .passou { color: var(--success); font-weight: bold; }
+        .falhou { color: var(--danger); opacity: 0.4; }
+        .badge-elite { background: var(--success); color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Análise Inteligente de Apostas</h1>
+
+    <div id="dashboard" class="dashboard"></div>
+
+    <div id="dashboard2" class="dashboard"></div>
+
+    <div class="filter-bar">
+        <div class="filter-group">
+            <span class="filter-label">Geral:</span>
+            <button onclick="filtrar('aprovado', true)" id="btn-elite" class="btn-elite">Apenas Elite ✅</button>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Pares:</span>
+            <button onclick="filtrar('pares', 2)">2P</button>
+            <button onclick="filtrar('pares', 3)">3P</button>
+            <button onclick="filtrar('pares', 4)">4P</button>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Primos:</span>
+            <button onclick="filtrar('primos', 1)">1 Primos</button>
+            <button onclick="filtrar('primos', 2)">2 Primos</button>
+            <button onclick="filtrar('primos', 3)">3 Primos</button>
+        </div>
+        <button class="btn-reset" onclick="resetarFiltros()">Limpar Filtros</button>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Jogo</th>
+                    <th>Dezenas</th>
+                    <th>Soma</th>
+                    <th>Pares</th>
+                    <th>Seq.</th>
+                    <th>Primos</th>
+                    <th>Quad.</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-corpo"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+
+    let analisesCompletas = [];
+    let filtroAtivo = { campo: null, valor: null };
+    const meusJogos = [
+[3,22,26,29,31,34,38,48],
+[16,24,34,35,43,55],
+[3,16,21,29,37,58],
+[7,23,24,30,33,50],
+[4,7,17,33,40,52],
+[12,14,23,39,40,51],
+[2,30,33,43,45,54],
+[1,3,30,45,56,59],
+[11,17,30,39,54,59],
+[9,20,24,33,43,54],
+[7,16,32,38,51,55],
+[6,19,22,42,45,60],
+[8,17,23,44,45,49],
+[4,13,14,23,51,60],
+[14,19,20,24,35,48],
+[17,21,34,35,38,56],
+[11,26,29,32,58,59],
+[8,22,30,41,47,55],
+[6,13,15,32,34,50],
+[11,22,25,28,58,60],
+[10,12,14,21,51,53],
+[9,13,22,36,50,54],
+[5,8,24,31,53,55],
+[4,20,22,31,32,49],
+[5,15,22,34,37,47],
+[5,31,32,39,48,56],
+[6,7,36,45,49,53],
+[1,15,18,27,48,52],
+[8,10,23,28,37,60],
+[9,16,25,29,42,60],
+[12,14,40,41,47,60],
+[13,16,17,21,40,47],
+[4,31,36,46,51,52],
+[7,25,34,40,49,53],
+[12,17,31,34,39,51],
+[5,14,26,28,31,48],
+[4,25,37,44,45,57],
+[12,17,33,51,52,55]
+];
+
+    // Lógica de processamento
+    function processarDados() {
+        analisesCompletas = historicoReal.map((jogoOrig, idx) => {
+            const jogo = [...jogoOrig].sort((a, b) => a - b);
+            const soma = jogo.reduce((a, b) => a + b, 0);
+            const pares = jogo.filter(n => n % 2 === 0).length;
+            let seq = 0;
+            for (let i = 0; i < jogo.length - 1; i++) if (jogo[i+1] === jogo[i]+1) seq++;
+            const primos = jogo.filter(n => PRIMOS.includes(n)).length;
+            let quads = new Set();
+            jogo.forEach(n => {
+                let l = Math.ceil(n/10), c = n%10 || 10;
+                if (l<=3 && c<=5) quads.add("Q1"); else if (l<=3 && c>5) quads.add("Q2");
+                else if (l>3 && c<=5) quads.add("Q3"); else quads.add("Q4");
+            });
+
+            const fSoma = soma >= 150 && soma <= 220;
+            const fPar = pares >= 2 && pares <= 4;
+            const fSeq = seq <= 1;
+            const fPri = primos >= 1 && primos <= 3;
+            const fQua = quads.size >= 3;
+
+            return {
+                id: idx + 1, dezenas: jogo, soma, pares, seq, primos, quads: quads.size,
+                filtros: { fSoma, fPar, fSeq, fPri, fQua },
+                aprovado: fSoma && fPar && fSeq && fPri && fQua
+            };
+        });
+    }
+
+    function filtrar(campo, valor) {
+        filtroAtivo = { campo, valor };
+        
+        // Atualiza estilo dos botões
+        document.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        renderizar();
+    }
+
+    function resetarFiltros() {
+        filtroAtivo = { campo: null, valor: null };
+        document.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+        renderizar();
+    }
+
+    function gerarResumo(analises) {
+        const total = analises.length;
+        const res = { total, soma: 0, paridade: {}, seq: {}, primos: {}, quads: {} };
+        
+        analises.forEach(a => {
+            if (a.filtros.fSoma) res.soma++;
+            res.paridade[a.pares] = (res.paridade[a.pares] || 0) + 1;
+            res.seq[a.seq] = (res.seq[a.seq] || 0) + 1;
+            res.primos[a.primos] = (res.primos[a.primos] || 0) + 1;
+            res.quads[a.quads] = (res.quads[a.quads] || 0) + 1;
+        });
+        return res;
+    }
+
+    function renderizar() {
+        const dadosFiltrados = filtroAtivo.campo 
+            ? analisesCompletas.filter(a => a[filtroAtivo.campo] === filtroAtivo.valor)
+            : analisesCompletas;
+
+        // Render Dashboard
+        const resumo = { 
+            total: dadosFiltrados.length, 
+            somaOk: dadosFiltrados.filter(a => a.filtros.fSoma).length,
+            elite: dadosFiltrados.filter(a => a.aprovado).length
+        };
+
+        const resumo2 = gerarResumo(dadosFiltrados);
+
+        // Render Dashboard
+        const dash = document.getElementById('dashboard2');
+        
+        const criarMiniGrafico = (titulo, obj, total, sufixo = "") => {
+            let html = `<div class="card-resumo"><h3>${titulo}</h3>`;
+            for (let [chave, qtd] of Object.entries(obj)) {
+                let perc = (qtd / total * 100).toFixed(0);
+                html += `
+                    <div class="stat-row">
+                        <div class="stat-info"><span>${chave}${sufixo}</span><span>${qtd} jogos (${perc}%)</span></div>
+                        <div class="bar-bg"><div class="bar-fill" style="width: ${perc}%"></div></div>
+                    </div>`;
+            }
+            return html + `</div>`;
+        };
+
+        dash.innerHTML = `
+            <div class="card-resumo">
+                <h3>Filtro de Soma (150-220)</h3>
+                <div class="stat-row">
+                    <div class="stat-info"><span>Aprovados</span><span>${resumo2.soma}</span></div>
+                    <div class="bar-bg success"><div class="bar-fill success" style="width: ${(resumo2.soma/resumo2.total*100)}%"></div></div>
+                </div>
+                <div class="stat-row">
+                    <div class="stat-info"><span>Reprovados</span><span>${resumo2.total - resumo2.soma}</span></div>
+                    <div class="bar-bg danger"><div class="bar-fill danger" style="width: ${((resumo2.total-resumo2.soma)/resumo2.total*100)}%"></div></div>
+                </div>
+            </div>
+            ${criarMiniGrafico("Distribuição de Pares", resumo2.paridade, resumo2.total, "P")}
+            ${criarMiniGrafico("Distribuição de Primos", resumo2.primos, resumo2.total, " Primos")}
+            ${criarMiniGrafico("Quadrantes Ocupados", resumo2.quads, resumo2.total, " Quad.")}
+        `;
+
+        // // Render Tabela
+        // document.getElementById('tabela-corpo').innerHTML = dadosFiltrados.map(a => `
+        //     <tr>
+        //         <td>#${a.id}</td>
+        //         <td>${a.dezenas.map(n => `<span class="bola-mini">${n}</span>`).join('')}</td>
+        //         <td class="${a.filtros.fSoma ? 'passou' : 'falhou'}">${a.soma}</td>
+        //         <td class="${a.filtros.fPar ? 'passou' : 'falhou'}">${a.pares}P</td>
+        //         <td class="${a.filtros.fSeq ? 'passou' : 'falhou'}">${a.seq}</td>
+        //         <td class="${a.filtros.fPri ? 'passou' : 'falhou'}">${a.primos}</td>
+        //         <td class="${a.filtros.fQua ? 'passou' : 'falhou'}">${a.quads}</td>
+        //         <td>${a.aprovado ? '✅ Elite' : '❌'}</td>
+        //     </tr>
+        // `).join('');
+
+
+        document.getElementById('dashboard').innerHTML = `
+            <div class="card-resumo">
+                <h3>Resumo do Filtro</h3>
+                <div class="stat-info"><span>Jogos Exibidos</span><span>${resumo.total}</span></div>
+                <div class="bar-bg"><div class="bar-fill" style="width: 100%"></div></div>
+            </div>
+            <div class="card-resumo">
+                <h3>Qualidade Elite</h3>
+                <div class="stat-info"><span>Passaram em tudo</span><span>${resumo.elite}</span></div>
+                <div class="bar-bg"><div class="bar-fill success" style="width: ${(resumo.elite/resumo.total*100 || 0)}%"></div></div>
+            </div>
+            <div class="card-resumo">
+                <h3>Soma Válida</h3>
+                <div class="stat-info"><span>Dentro do range</span><span>${resumo.somaOk}</span></div>
+                <div class="bar-bg"><div class="bar-fill success" style="width: ${(resumo.somaOk/resumo.total*100 || 0)}%"></div></div>
+            </div>
+        `;
+
+        // Render Tabela
+        document.getElementById('tabela-corpo').innerHTML = dadosFiltrados.map(a => `
+            <tr>
+                <td>#${a.id}</td>
+                <td>${a.dezenas.map(n => `<span class="bola-mini">${n}</span>`).join('')}</td>
+                <td class="${a.filtros.fSoma ? 'passou' : 'falhou'}">${a.soma}</td>
+                <td class="${a.filtros.fPar ? 'passou' : 'falhou'}">${a.pares}P</td>
+                <td class="${a.filtros.fSeq ? 'passou' : 'falhou'}">${a.seq}</td>
+                <td class="${a.filtros.fPri ? 'passou' : 'falhou'}">${a.primos}</td>
+                <td class="${a.filtros.fQua ? 'passou' : 'falhou'}">${a.quads}</td>
+                <td>${a.aprovado ? '<span class="badge-elite">ELITE</span>' : '❌'}</td>
+            </tr>
+        `).join('');
+    }
+
+
+
+    // Inicialização
+    processarDados();
+    renderizar();
+</script>
+
+</body>
+</html>

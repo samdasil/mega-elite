@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabela de Análise Estatística</title>
+    <script src="script.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f8f9fa; padding: 30px; }
+        .table-container { 
+            background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            overflow: hidden; max-width: 1200px; margin: 0 auto; 
+        }
+        
+        table { width: 100%; border-collapse: collapse; text-align: center; }
+        
+        thead { background-color: #212529; color: white; }
+        th { padding: 15px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        tr:hover { background-color: #f1f4f9; }
+
+        /* Estilo das Dezenas */
+        .dezenas-cell { display: flex; gap: 4px; justify-content: center; min-width: 180px; }
+        .bola { 
+            width: 24px; height: 24px; background: #e9ecef; border-radius: 4px; 
+            font-size: 0.75rem; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #495057; border: 1px solid #ced4da;
+        }
+
+        /* Indicadores de Status */
+        .status-dot { 
+            display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; 
+        }
+        .passou { color: #28a745; font-weight: bold; }
+        .falhou { color: #dc3545; font-weight: bold; opacity: 0.6; }
+        
+        .bg-passou { background-color: #28a745; }
+        .bg-falhou { background-color: #dc3545; }
+
+        .badge-elite { 
+            background: #28a745; color: white; padding: 4px 8px; 
+            border-radius: 4px; font-size: 0.7rem; font-weight: bold; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Jogo</th>
+                <th>Dezenas</th>
+                <th>Soma</th>
+                <th>Pares</th>
+                <th>Seq.</th>
+                <th>Primos</th>
+                <th>Quad.</th>
+                <th>Inédito</th>
+                <th>Resultado</th>
+            </tr>
+        </thead>
+        <tbody id="corpo-tabela">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    // const PRIMOS = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59];
+    //const historicoReal = [[1, 2, 3, 4, 5, 6]]; 
+
+    // const meusJogos = [
+    //     [15, 22, 31, 38, 45, 52], 
+    //     [2, 3, 6, 4, 8, 9],       
+    //     [1, 2, 3, 4, 5, 6],
+    //     [10, 11, 25, 26, 40, 41]
+    // ];
+
+    function analisarEPopularTabela() {
+        const tbody = document.getElementById('corpo-tabela');
+        const resultados = analisarJogos(historicoReal);
+
+        tbody.innerHTML = resultados.map(res => `
+            <tr>
+                <td><strong>#${res.jogo}</strong></td>
+                <td>
+                    <div class="dezenas-cell">
+                        ${res.dezenas.map(n => `<div class="bola">${n.toString().padStart(2, '0')}</div>`).join('')}
+                    </div>
+                </td>
+                <td class="${res.analiseFiltros.soma.valido ? 'passou' : 'falhou'}">${res.analiseFiltros.soma.valor}</td>
+                <td class="${res.analiseFiltros.paridade.valido ? 'passou' : 'falhou'}">${res.analiseFiltros.paridade.valor}</td>
+                <td class="${res.analiseFiltros.sequencia.valido ? 'passou' : 'falhou'}">${res.analiseFiltros.sequencia.valor}</td>
+                <td class="${res.analiseFiltros.primos.valido ? 'passou' : 'falhou'}">${res.analiseFiltros.primos.valor}</td>
+                <td class="${res.analiseFiltros.quadrantes.valido ? 'passou' : 'falhou'}">${res.analiseFiltros.quadrantes.quantidade}</td>
+                <td class="${res.analiseFiltros.inedito.valido ? 'passou' : 'falhou'}">${res.analiseFiltros.inedito.valido ? 'SIM' : 'NÃO'}</td>
+                <td>
+                    ${res.aprovadoGeral ? '<span class="badge-elite">ELITE</span>' : '---'}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Função de análise (lógica central)
+    function analisarJogos(lista) {
+        return lista.map((jogoOriginal, index) => {
+            const jogo = [...jogoOriginal].sort((a, b) => a - b);
+            const somaVal = jogo.reduce((a, b) => a + b, 0);
+            const pares = jogo.filter(n => n % 2 === 0).length;
+            let seqCount = 0;
+            for (let i = 0; i < jogo.length - 1; i++) { if (jogo[i + 1] === jogo[i] + 1) seqCount++; }
+            const totalPrimos = jogo.filter(n => PRIMOS.includes(n)).length;
+            
+            let quadrantes = new Set();
+            jogo.forEach(n => {
+                let linha = Math.ceil(n / 10), coluna = n % 10 || 10;
+                if (linha <= 3 && coluna <= 5) quadrantes.add("Q1");
+                else if (linha <= 3 && coluna > 5) quadrantes.add("Q2");
+                else if (linha > 3 && coluna <= 5) quadrantes.add("Q3");
+                else quadrantes.add("Q4");
+            });
+
+            const jogoStr = jogo.join(',');
+            const jaOcorreu = historicoReal.some(s => s.sort((a,b)=>a-b).join(',') === jogoStr);
+
+            const fSoma = (somaVal >= 150 && somaVal <= 220);
+            const fPar = (pares >= 2 && pares <= 4);
+            const fSeq = (seqCount <= 1);
+            const fPri = (totalPrimos >= 1 && totalPrimos <= 3);
+            const fQua = (quadrantes.size >= 3);
+            const fIne = !jaOcorreu;
+
+            return {
+                jogo: index + 1,
+                dezenas: jogo,
+                aprovadoGeral: (fSoma && fPar && fSeq && fPri && fQua && fIne),
+                analiseFiltros: {
+                    soma: { valido: fSoma, valor: somaVal },
+                    paridade: { valido: fPar, valor: `${pares}P` },
+                    sequencia: { valido: fSeq, valor: seqCount },
+                    primos: { valido: fPri, valor: totalPrimos },
+                    quadrantes: { valido: fQua, quantidade: quadrantes.size },
+                    inedito: { valido: fIne }
+                }
+            };
+        });
+    }
+
+    analisarEPopularTabela();
+</script>
+
+</body>
+</html>

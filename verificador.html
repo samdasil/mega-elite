@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Resultados</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; }
+        #container-jogos { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        
+        /* .card { 
+            background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 300px; padding: 20px; border-top: 5px solid #6c757d; 
+        } */
+         /* O container do card precisa ser 'relative' para a coroa se basear nele */
+        .card {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            padding: 25px 20px 20px 20px;
+            margin-top: 30px; /* Espaço para a coroa não cortar no topo da página */
+            border-top: 5px solid #28a745; /* Cor de vencedor */
+            overflow: visible; /* Importante para a coroa poder "sair" do card */
+        }
+
+        /* Estilo da Coroa */
+        .coroa {
+            position: absolute;
+            top: -25px;      /* Move para cima para "vestir" o card */
+            left: -15px;     /* Move para a esquerda */
+            font-size: 50px; /* Tamanho grande para ganhar destaque */
+            transform: rotate(-25deg); /* Inclinação estilosa */
+            z-index: 10;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            pointer-events: none; /* Evita que a coroa atrapalhe cliques no card */
+        }
+
+        /* Badge de Vencedor */
+        .status-vencedor {
+            background: #fff3cd;
+            color: #856404;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            border: 1px solid #ffeeba;
+        }
+        
+        .card.premiado { border-top-color: #ffc107; background-color: #fffbeb; }
+
+        .header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .jogo-num { font-weight: bold; color: #444; }
+        .status { font-size: 0.8rem; font-weight: bold; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: #eee; }
+
+        .dezenas { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; }
+        .bola { 
+            width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; 
+            border-radius: 50%; background: #fff; border: 1px solid #ccc; font-weight: bold; font-size: 0.9rem;
+        }
+        .bola.acerto { background-color: #28a745; color: white; border-color: #1e7e34; }
+
+        .footer { font-size: 0.85rem; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <div>
+        <h2 style="text-align: center;" id="title">Aposta sorteada</h2>
+        <input type="text" name="numeros-sorteados" id="numeros-sorteados" placeholder="Ex: 9,10,15,46,49,51" style="width: 100%; max-width: 400px; margin: 0 auto; display: block; padding: 10px; font-size: 1rem; border-radius: 4px; border: 1px solid #ccc;text-align: center;" readonly>
+        <input type="button" value="Verificar" id="btn-verificar" onclick="executar()" style="display: block; margin: 20px auto; padding: 10px 20px; font-size: 1rem; border-radius: 4px; border: none; background-color: #007bff; color: white; cursor: pointer;">
+    </div>
+    <div>
+        <h2 style="text-align: center;">Conferência do Sorteio</h2>
+        <div id="container-jogos"></div>
+    </div>
+    <script src="verificador.js"></script>
+</body>
+</html>
